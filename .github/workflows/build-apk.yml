@@ -53,6 +53,22 @@ jobs:
             echo "Generated fallback debug.keystore."
           fi
 
+      - name: Ensure Native PrismML Libraries Exist
+        run: |
+          SO_TARGET="app/src/main/jniLibs/arm64-v8a/libllama.so"
+          if [ ! -f "$SO_TARGET" ]; then
+            echo "libllama.so not found in repository. Downloading PrismML prebuilt binaries..."
+            mkdir -p app/src/main/jniLibs/arm64-v8a
+            curl -L -s https://github.com/PrismML-Eng/llama.cpp/releases/download/prism-b10683-d8f26ee/llama-prism-b10683-d8f26ee-bin-android-arm64.tar.gz | tar -xzf - -C /tmp
+            cp /tmp/llama-prism-b10683-d8f26ee/libllama.so app/src/main/jniLibs/arm64-v8a/
+            cp /tmp/llama-prism-b10683-d8f26ee/libggml*.so app/src/main/jniLibs/arm64-v8a/
+            cp /tmp/llama-prism-b10683-d8f26ee/libggml-cpu-android_armv8.0_1.so app/src/main/jniLibs/arm64-v8a/libggml-cpu.so
+            rm -f app/src/main/jniLibs/arm64-v8a/libpocketai_llama.so
+            echo "Downloaded and installed PrismML native libraries successfully."
+          else
+            echo "Found libllama.so already in repository."
+          fi
+
       - name: Build Debug APK
         run: |
           if [ -f "./gradlew" ]; then

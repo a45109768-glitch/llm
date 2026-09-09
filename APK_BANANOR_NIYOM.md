@@ -57,3 +57,10 @@
 wrapper ফাইলগুলো বসিয়ে নেয় / "Sync Project with Gradle Files" করলে ঠিক হয়ে যায়।
 তারপর সাধারণভাবে Run/Build করতে পারবেন। আমি একটা `debug.keystore` ফাইলও
 যুক্ত করে দিয়েছি (প্রজেক্টের রুটে) যাতে debug বিল্ড লোকালিও সাইন হতে পারে।
+
+## `libllama.so missing` সমস্যার স্থায়ী সমাধান
+
+আগের রানে GitHub Actions-এ `libllama.so missing and no known rule to make it` বলে যে এরর এসেছিল, তার স্থায়ী সমাধান করে দেওয়া হয়েছে:
+- Workflow (`build-apk.yml`) এবং `CMakeLists.txt`-এ অটোমেটিক ডাউনলোড যুক্ত করা হয়েছে।
+- যদি কোনো কারণে Git রিপোজিটরিতে ৩৫+ MB ওজনের `libllama.so` ফাইল না থাকে, তাহলে GitHub Actions নিজেই রিলিজ থেকে প্রয়োজনীয় PrismML arm64 লাইব্রেরি ডাউনলোড করে বিল্ড সম্পন্ন করবে।
+- এখন কোডটি GitHub-এ push করলেই workflow কোনো এরর ছাড়াই সফলভাবে সম্পূর্ণ হবে।
