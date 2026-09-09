@@ -14,6 +14,7 @@
 
 #include "llama.h"
 #include "ggml.h"
+#include "ggml-backend.h"
 
 #define TAG "PocketAI_PrismLlama"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  TAG, __VA_ARGS__)
@@ -88,6 +89,7 @@ Java_com_pocketai_local_engines_NativeLlamaJni_nativeInitBackend(JNIEnv * /* env
     LOGI("Initializing PrismML llama backend...");
     clear_last_error();
     register_all_log_callbacks();
+    ggml_backend_load_all();
     llama_backend_init();
     LOGI("PrismML llama backend initialized successfully.");
     return JNI_TRUE;
