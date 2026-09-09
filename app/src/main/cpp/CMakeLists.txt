@@ -45,14 +45,18 @@ if(NOT EXISTS "${PRISM_ABI_DIR}/libllama.so" AND "${ANDROID_ABI}" STREQUAL "arm6
             RESULT_VARIABLE PRISM_TAR_CODE
         )
         if(PRISM_TAR_CODE EQUAL 0)
-            file(COPY "${CMAKE_BINARY_DIR}/llama-prism-b10683-d8f26ee/libllama.so" DESTINATION "${PRISM_ABI_DIR}")
-            file(COPY "${CMAKE_BINARY_DIR}/llama-prism-b10683-d8f26ee/libggml.so" DESTINATION "${PRISM_ABI_DIR}")
-            file(COPY "${CMAKE_BINARY_DIR}/llama-prism-b10683-d8f26ee/libggml-base.so" DESTINATION "${PRISM_ABI_DIR}")
-            file(COPY "${CMAKE_BINARY_DIR}/llama-prism-b10683-d8f26ee/libggml-cpu-android_armv8.0_1.so"
-                 DESTINATION "${PRISM_ABI_DIR}")
-            file(COPY "${CMAKE_BINARY_DIR}/llama-prism-b10683-d8f26ee/libggml-cpu-android_armv8.0_1.so"
-                 DESTINATION "${PRISM_ABI_DIR}"
-                 RENAME "libggml-cpu.so")
+            file(GLOB PRISM_SO_FILES "${CMAKE_BINARY_DIR}/llama-prism-b10683-d8f26ee/*.so")
+            foreach(SO_FILE ${PRISM_SO_FILES})
+                get_filename_component(SO_NAME "${SO_FILE}" NAME)
+                if(NOT SO_NAME STREQUAL "libllama-common.so")
+                    file(COPY "${SO_FILE}" DESTINATION "${PRISM_ABI_DIR}")
+                endif()
+            endforeach()
+            if(EXISTS "${PRISM_ABI_DIR}/libggml-cpu-android_armv8.0_1.so" AND NOT EXISTS "${PRISM_ABI_DIR}/libggml-cpu.so")
+                file(COPY "${PRISM_ABI_DIR}/libggml-cpu-android_armv8.0_1.so"
+                     DESTINATION "${PRISM_ABI_DIR}"
+                     RENAME "libggml-cpu.so")
+            endif()
             message(STATUS "PrismML native libraries downloaded and installed successfully.")
         endif()
     endif()
