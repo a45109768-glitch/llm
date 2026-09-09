@@ -78,7 +78,8 @@ object NativeLlamaJni {
             }
         }
 
-        if (stage1Success && initBackendSafe()) {
+        val nativeDirFromContext = context?.applicationInfo?.nativeLibraryDir
+        if (stage1Success && initBackendSafe(nativeDirFromContext)) {
             isAvailable = true
             loadErrorDetail = null
             AppLogger.i(TAG, "PrismML llama.cpp loaded successfully via System.loadLibrary: $backendInfo")
@@ -117,7 +118,7 @@ object NativeLlamaJni {
                 }
             }
 
-            if (stage2Success && initBackendSafe()) {
+            if (stage2Success && initBackendSafe(nativeDir.absolutePath)) {
                 isAvailable = true
                 loadErrorDetail = null
                 AppLogger.i(TAG, "PrismML llama.cpp loaded successfully from nativeLibraryDir: $backendInfo")
@@ -165,7 +166,7 @@ object NativeLlamaJni {
                     }
                 }
 
-                if (initBackendSafe()) {
+                if (initBackendSafe(extractedDir.absolutePath)) {
                     isAvailable = true
                     loadErrorDetail = null
                     AppLogger.i(TAG, "PrismML llama.cpp loaded successfully from APK extraction: $backendInfo")
@@ -184,10 +185,17 @@ object NativeLlamaJni {
         return false
     }
 
-    private fun initBackendSafe(): Boolean {
+    private fun initBackendSafe(nativeLibDir: String? = null): Boolean {
         return try {
-            nativeInitBackend()
+            val initialized = nativeInitBackend(nativeLibDir)
+            if (!initialized) {
+                val msg = "nativeInitBackend returned false (backend registration failed for libDir: $nativeLibDir)"
+                AppLogger.e(TAG, msg)
+                loadErrorDetail = msg
+                return false
+            }
             backendInfo = nativeGetBackendInfo()
+            AppLogger.i(TAG, "nativeInitBackend succeeded: $backendInfo")
             true
         } catch (t: Throwable) {
             AppLogger.e(TAG, "nativeInitBackend failed: ${t.message}", t)
@@ -197,7 +205,7 @@ object NativeLlamaJni {
     }
 
     @JvmStatic
-    external fun nativeInitBackend(): Boolean
+    external fun nativeInitBackend(nativeLibDir: String?): Boolean
 
     @JvmStatic
     external fun nativeGetBackendInfo(): String

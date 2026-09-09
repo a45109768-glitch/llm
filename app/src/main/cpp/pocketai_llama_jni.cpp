@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <cerrno>
+#include <dlfcn.h>
 
 #include "llama.h"
 #include "ggml.h"
@@ -85,13 +86,65 @@ static void register_all_log_callbacks() {
 extern "C" {
 
 JNIEXPORT jboolean JNICALL
-Java_com_pocketai_local_engines_NativeLlamaJni_nativeInitBackend(JNIEnv * /* env */, jclass /* clazz */) {
+Java_com_pocketai_local_engines_NativeLlamaJni_nativeInitBackend(
+    JNIEnv *env, jclass /* clazz */, jstring jNativeLibDir) {
+
     LOGI("Initializing PrismML llama backend...");
     clear_last_error();
     register_all_log_callbacks();
+
+    std::string lib_dir;
+    if (jNativeLibDir) {
+        const char * dir_chars = env->GetStringUTFChars(jNativeLibDir, nullptr);
+        if (dir_chars) {
+            lib_dir = dir_chars;
+            env->ReleaseStringUTFChars(jNativeLibDir, dir_chars);
+        }
+    }
+
+    LOGI("nativeInitBackend: nativeLibDir='%s'", lib_dir.c_str());
+
+    ggml_backend_reg_t reg = nullptr;
+    if (!lib_dir.empty()) {
+        std::string cpu_path = lib_dir;
+        if (cpu_path.back() != '/') {
+            cpu_path += "/";
+        }
+        cpu_path += "libggml-cpu.so";
+
+        LOGI("Attempting explicit backend load from '%s'...", cpu_path.c_str());
+        dlerror(); // Clear existing dlerror state
+        reg = ggml_backend_load(cpu_path.c_str());
+        if (!reg) {
+            const char * err = dlerror();
+            LOGE("ggml_backend_load failed for '%s': %s", cpu_path.c_str(), err ? err : "unknown error");
+            // Also attempt loading all known backends from this directory path
+            ggml_backend_load_all_from_path(lib_dir.c_str());
+        } else {
+            LOGI("Successfully loaded backend '%s' from '%s'", ggml_backend_reg_name(reg), cpu_path.c_str());
+        }
+    }
+
+    // Also run auto-discovery as fallback
     ggml_backend_load_all();
+
+    size_t reg_count = ggml_backend_reg_count();
+    size_t dev_count = ggml_backend_dev_count();
+    LOGI("PrismML backend registration check: %zu registered backend(s), %zu device(s) found", reg_count, dev_count);
+    for (size_t i = 0; i < dev_count; ++i) {
+        ggml_backend_dev_t dev = ggml_backend_dev_get(i);
+        LOGI("  Registered Backend Device [%zu]: %s (%s)",
+             i, ggml_backend_dev_name(dev), ggml_backend_dev_description(dev));
+    }
+
+    if (!reg && dev_count == 0 && reg_count == 0) {
+        const char * err = dlerror();
+        LOGE("No ggml backends could be loaded! dlerror: %s", err ? err : "none");
+        return JNI_FALSE;
+    }
+
     llama_backend_init();
-    LOGI("PrismML llama backend initialized successfully.");
+    LOGI("PrismML llama backend initialized successfully (devices=%zu).", dev_count);
     return JNI_TRUE;
 }
 
@@ -106,7 +159,9 @@ Java_com_pocketai_local_engines_NativeLlamaJni_nativeGetBackendInfo(JNIEnv *env,
     const char * abi = "unknown";
 #endif
     oss << "PrismML llama.cpp (branch: prism, commit: d8f26ee, ABI: " << abi
-        << ", supports_mmap: " << (llama_supports_mmap() ? "true" : "false") << ")";
+        << ", supports_mmap: " << (llama_supports_mmap() ? "true" : "false")
+        << ", backends: " << ggml_backend_reg_count()
+        << ", devices: " << ggml_backend_dev_count() << ")";
     return env->NewStringUTF(oss.str().c_str());
 }
 
