@@ -1,0 +1,6 @@
+{
+  "name": "PocketAI",
+  "description": "Local-first, model-agnostic personal AI assistant and robot control platform with local LLM management, cloud providers, and Obsidian memory vault.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
